@@ -6,6 +6,7 @@ import sys
 import re
 from Bio import SeqIO
 from collections import Counter
+import json
 
 # return a tuple of sample names on 2 copies
 def get_samples(vcf_reader):
@@ -81,7 +82,7 @@ def count_ref_bases(reference_sequences):
 ######### main
 
 #vcf_f_n = sys.argv[1]
-vcf_f_n="./adelie/allmodern.24.allancient.22.q20.vcf"
+vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
 msg_freq = 50000
@@ -123,6 +124,11 @@ for record in vcf_reader:
 
 print("Find", len(patterns), "patterns from total", row, "rows.")
 
+with open('patterns.json', 'w') as fp:
+    json.dump(patterns, fp)
+with open('ref_bases_taken.json', 'w') as fp:
+    json.dump(ref_bases_taken, fp)
+    
 # print patterns
 print('\t'.join(samples), file=patterns_file)
 for k, v in patterns.items():
@@ -133,6 +139,8 @@ reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
 print("There are", len(reference_sequences), "sequences in the reference", ref_f_n)
 
 ref_bases = count_ref_bases(reference_sequences)
+with open('ref_bases.json', 'w') as fp:
+    json.dump(ref_bases, fp)
 
 diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
 if len(diff) > 0:
