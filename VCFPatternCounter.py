@@ -85,7 +85,7 @@ def count_ref_bases(reference_sequences):
 vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
-msg_freq = 50000
+msg_freq = 100000
 
 vcf_reader = vcf.Reader(open(vcf_f_n, 'r'))
 print("Count patterns from", vcf_f_n)
@@ -136,7 +136,7 @@ for k, v in patterns.items():
 
 # count all constant sites and add to patterns
 reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
-print("There are", len(reference_sequences), "sequences in the reference", ref_f_n)
+print("There are", sum(1 for _ in reference_sequences), "sequences in the reference", ref_f_n)
 
 ref_bases = count_ref_bases(reference_sequences)
 with open('ref_bases.json', 'w') as fp:
