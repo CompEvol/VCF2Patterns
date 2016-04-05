@@ -42,7 +42,8 @@ def get_one_site_patttern(record, ref, alt, verbose=False):
 				elif gt2 == 0:
 					alt_gt = ref
 				else:
-					raise Exception("Invaild genotype, sample =", sample.sample, "GT =", gt)
+					raise Exception("Invaild genotype, sample = {}, GT = {} !"
+						.format(sample.sample, gt))
 				site_patt += alt_gt	
 			
 			if len(alt_gt) > 1: 
@@ -53,8 +54,9 @@ def get_one_site_patttern(record, ref, alt, verbose=False):
 		
 	if len(site_patt) != len(record.samples)*2:
 		print(site_patt)
-		raise Exception("One site pattern has incorrect number in", record.CHROM, "position", record.POS,
-				"sample", sample.sample, len(site_patt), "!=", len(record.samples)*2)	
+		raise Exception("One site pattern has incorrect number in {} "
+			"position {} of sample {}, where {} != {} !"
+			.format(record.CHROM, record.POS, sample.sample, len(site_patt), len(record.samples)*2))	
 		
 	return site_patt	
 
@@ -74,7 +76,8 @@ def count_ref_bases(reference_sequences):
 			else:
 				ref_bases[nt] = c_nt
 		if len(seq) != tot_nt:
-			raise Exception("There are", len(seq), "nucleotide bases, but find", tot_nt, "in total !")	
+			raise Exception("There are {} nucleotide bases, but find {} in total !"
+				.format(len(seq), tot_nt))	
 				
 	return ref_bases
 
@@ -143,16 +146,18 @@ ref_bases = count_ref_bases(reference_sequences)
 
 diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
 if len(diff) > 0:
-	print("Warning: find different nucleotide bases between reference and VCF, diff = ", diff) 
+	print("Warning: find different nucleotide bases between reference and VCF, " 
+			"diff = {} !".format(diff)) 
 
 for k in ref_bases.keys():
 	constant_site = k * len(samples)
 	if k not in ref_bases_taken:
-		print("Warning: cannot find nucleotide base", k, ", skip it !") 
+		print("Warning: cannot find nucleotide base {}, skip it !".format(k)) 
 		continue
 	count = ref_bases[k] - ref_bases_taken[k]
 	if count < 1:
-		print("Warning: constant site having all", k, "s does not have a positive count, count = ", count) 
+		print("Warning: constant site having all {}s does not have a positive count, " 
+				"count = {} !".format(k, count)) 
 		continue	
 	print('{}\t{}'.format(constant_site, count), file=patterns_file)
 
