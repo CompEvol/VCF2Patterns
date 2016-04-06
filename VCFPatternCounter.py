@@ -65,10 +65,12 @@ def get_one_site_patttern(record, ref, alt, verbose=False):
 # return a dictionary of nt => counts
 def count_ref_bases(reference_sequences):
 	ref_bases = Counter()
+	n_seq = 0
 	for ref_seq in reference_sequences:
 		#ref_seq = next(reference_sequences)
 		seq = ref_seq.seq
 		tot_nt = 0
+		n_seq += 1
 		for nt in ['A', 'C', 'G', 'T', 'N']:
 			c_nt = seq.count(nt)
 			tot_nt += c_nt
@@ -76,7 +78,9 @@ def count_ref_bases(reference_sequences):
 		if len(seq) != tot_nt:
 			raise Exception("There are {} nucleotide bases, but find {} in total !"
 				.format(len(seq), tot_nt))
-
+				
+	print("There are {} reference sequences in total".format(n_seq))
+	
 	return ref_bases
 
 ######### main
@@ -136,7 +140,7 @@ for k, v in patterns.items():
 
 # count all constant sites and add to patterns
 reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
-print("There are", sum(1 for _ in reference_sequences), "sequences in the reference", ref_f_n)
+print("Loading reference sequences from", ref_f_n)
 
 ref_bases = count_ref_bases(reference_sequences)
 with open('ref_bases.json', 'w') as fp:
