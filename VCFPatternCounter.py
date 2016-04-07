@@ -182,6 +182,18 @@ with open('indel_frequencies.txt', 'w') as fp:
 	for k, v in indel_frequencies.items():
 		print('{}\t{}'.format(k, v), file=fp)
 
+indel_freq_sum = sum(indel_frequencies.values())
+if n_c_row != indel_freq_sum:
+	raise Exception("Incorrect indel frequencies {}, it should = {} !".format(indel_freq_sum, n_c_row))
+
+with open('mu_frequencies.txt', 'w') as fp:
+	for k, v in mu_frequencies.items():
+		print('{}\t{}'.format(k, v), file=fp)
+
+mu_freq_sum = sum(mu_frequencies.values())
+if (row - n_c_row) != mu_freq_sum:
+	raise Exception("Incorrect mutation frequencies {}, it should = {} !".format(mu_freq_sum, (row - n_c_row)))
+
 # print patterns
 patterns_file = open("Patterns.txt", "w")
 
@@ -217,12 +229,9 @@ for k in ref_bases.keys():
 patterns_file.close()
 rows_not_count_file.close()
 
-# count total constant sites as SNP not sampled
-mu_frequencies[0] = sum(ref_bases.values()) - sum(ref_bases_taken.values()) 
-
-with open('mu_frequencies.txt', 'w') as fp:
-	for k, v in mu_frequencies.items():
-		print('{}\t{}'.format(k, v), file=fp)
+# count total constant site bases
+constant_site_bases = sum(ref_bases.values()) - sum(ref_bases_taken.values())
+print("Total constant site bases =", constant_site_bases) 
 
 
 
