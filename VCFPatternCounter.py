@@ -102,7 +102,7 @@ def count_ref_bases(reference_sequences):
 	for ref_seq in reference_sequences:
 		#ref_seq = next(reference_sequences)
 		seq = ref_seq.seq
-		ref_bases = count_bases(seq)
+		ref_bases += count_bases(seq)
 		nt_tot += len(seq)
 		n_seq += 1
 	print("There are {} reference sequences and {} nucleotide bases in total."
@@ -130,8 +130,8 @@ def count_bases(seq):
 ######### main
 
 #vcf_f_n = sys.argv[1]
-#vcf_f_n="./adelie/1klines.vcf"
-vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
+vcf_f_n="./adelie/1klines.vcf"
+#vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
 msg_freq = 100000
