@@ -96,31 +96,41 @@ def get_indel_count(record, ref, alt, verbose=False):
 # count all bases in reference sequences
 # return a dictionary of nt => counts
 def count_ref_bases(reference_sequences):
+	ref_bases = Counter()
 	n_seq = 0
+	nt_tot = 0
 	for ref_seq in reference_sequences:
 		#ref_seq = next(reference_sequences)
 		seq = ref_seq.seq
 		ref_bases = count_bases(seq)
+		nt_tot += len(seq)
 		n_seq += 1
-						
-	print("There are {} reference sequences in total".format(n_seq))	
+	print("There are {} reference sequences and {} nucleotide bases in total."
+		.format(n_seq, nt_tot))	
+	
+	ref_bases_sum = sum(ref_bases.values())
+	if ref_bases_sum != nt_tot:
+		raise Exception("Find {} nucleotide bases, but there are {} in reference sequences file !"
+			.format(ref_bases_sum, nt_tot))
+
 	return ref_bases
 
 def count_bases(seq):
-	ref_bases = Counter()
-	tot_nt = 0
+	bases = Counter()
+	nt_tot = 0
 	for nt in ['A', 'C', 'G', 'T', 'N']:
 		c_nt = seq.count(nt)
-		tot_nt += c_nt
-		ref_bases[nt] += c_nt
-	if len(seq) != tot_nt:
+		bases[nt] += c_nt
+		nt_tot += c_nt
+	if len(seq) != nt_tot:
 		raise Exception("There are {} nucleotide bases, but find {} in total !"
-			.format(len(seq), tot_nt))
-	return ref_bases
+			.format(len(seq), nt_tot))
+	return bases
 
 ######### main
 
 #vcf_f_n = sys.argv[1]
+#vcf_f_n="./adelie/1klines.vcf"
 vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
@@ -138,7 +148,7 @@ ref_bases_taken = Counter()
 # SNP patterns, pattern => counts
 patterns = Counter()
 # number of samples mutated on the site, number of samples => counts
-mu_frequencies = Counter()
+snp_frequencies = Counter()
 indel_frequencies = Counter()
 row = 0
 n_c_row = 0
@@ -154,12 +164,12 @@ for record in vcf_reader:
 	# all changes should be taken out from reference including ins/del
 	ref_bases_taken += count_bases(ref)
 	
-	site_patt, mu_freq = get_one_site_patttern(record, ref, alt)
+	site_patt, snp_freq = get_one_site_patttern(record, ref, alt)
 	# only pick up mutation, ignore insertion/deletion
 	if len(site_patt) > 0:
 		ref = ref.upper()
 		patterns[site_patt] += 1
-		mu_frequencies[mu_freq] +=1
+		snp_frequencies[snp_freq] +=1
 	else:
 		n_c_row += 1
 		n_c_freq = get_indel_count(record, ref, alt)
@@ -171,10 +181,11 @@ for record in vcf_reader:
 	if row % msg_freq == 0:
 		print("Find {} patterns from {} rows.".format(len(patterns), row))
 
+rows_not_count_file.close()
 print("Find {} patterns from total {} rows, where {} rows are ignored.".format(len(patterns), row, n_c_row))
 
-with open('patterns.json', 'w') as fp:
-    json.dump(patterns, fp)
+#with open('patterns.json', 'w') as fp:
+#    json.dump(patterns, fp)
 with open('ref_bases_taken.json', 'w') as fp:
     json.dump(ref_bases_taken, fp)
 
@@ -186,13 +197,13 @@ indel_freq_sum = sum(indel_frequencies.values())
 if n_c_row != indel_freq_sum:
 	raise Exception("Incorrect indel frequencies {}, it should = {} !".format(indel_freq_sum, n_c_row))
 
-with open('mu_frequencies.txt', 'w') as fp:
-	for k, v in mu_frequencies.items():
+with open('snp_frequencies.txt', 'w') as fp:
+	for k, v in snp_frequencies.items():
 		print('{}\t{}'.format(k, v), file=fp)
 
-mu_freq_sum = sum(mu_frequencies.values())
-if (row - n_c_row) != mu_freq_sum:
-	raise Exception("Incorrect mutation frequencies {}, it should = {} !".format(mu_freq_sum, (row - n_c_row)))
+snp_freq_sum = sum(snp_frequencies.values())
+if (row - n_c_row) != snp_freq_sum:
+	raise Exception("Incorrect SNP frequencies {}, it should = {} !".format(snp_freq_sum, (row - n_c_row)))
 
 # print patterns
 patterns_file = open("Patterns.txt", "w")
@@ -209,6 +220,17 @@ ref_bases = count_ref_bases(reference_sequences)
 with open('ref_bases.json', 'w') as fp:
     json.dump(ref_bases, fp)
 
+ref_bases_sum = sum(ref_bases.values())
+ref_bases_taken_sum = sum(ref_bases_taken.values())
+if ref_bases_sum < ref_bases_taken_sum:
+	raise Exception("Total nucleotides in VCF ref {} should >= totals in reference sequences {} !\n"
+		"Please check ref_bases.json and ref_bases_taken.json".format(ref_bases_taken_sum, ref_bases_sum))
+
+# count total constant site bases
+constant_site_bases = ref_bases_sum - ref_bases_taken_sum
+print("Total constant site bases =", constant_site_bases) 
+
+# add constant site to patterns
 diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
 if len(diff) > 0:
 	print("Warning: find different nucleotide bases between reference and VCF ref, "
@@ -227,11 +249,4 @@ for k in ref_bases.keys():
 	print('{}\t{}'.format(constant_site, count), file=patterns_file)
 
 patterns_file.close()
-rows_not_count_file.close()
-
-# count total constant site bases
-constant_site_bases = sum(ref_bases.values()) - sum(ref_bases_taken.values())
-print("Total constant site bases =", constant_site_bases) 
-
-
 
