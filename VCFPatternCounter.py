@@ -9,88 +9,96 @@ from collections import Counter
 import json
 
 # return a tuple of sample names on 2 copies
-def get_samples(vcf_reader):
+def get_samples(vcf_reader, ind_age):
 	samples = ()
 	#print (vcf_reader.samples)
 	for sn in vcf_reader.samples:
-		s1 = sn + "_1"
-		s2 = sn + "_2"
-		samples += (s1,s2,)
+		if ind_age == 0 or (ind_age == 1 and len(sn) <= ancient_s_n_len) or (ind_age == 2 and len(sn) > ancient_s_n_len):
+			s1 = sn + "_1"
+			s2 = sn + "_2"
+			samples += (s1,s2,)
 	return samples
 
 # return a string of one-site pattern in a site of all samples on 2 copies
 # if ALT contains insertion/deletion then return empty string
-def get_one_site_patttern(record, ref, alt, verbose=False):
+def get_one_site_patttern(record, ref, alt, ind_age, verbose=False):
 	site_patt=""
 	if len(ref) != 1:
 		return "", 0
 
-	n_samples = 0
+	freq = 0
+	n_sample = 0
 	for sample in record.samples:
 		#sample = record.samples[1]
 		gt = sample['GT'].strip()
-
+		sample_name = sample.sample
+		
 		if verbose:
 			print(gt)
 
-		if gt == ".":
-			site_patt += ref * 2
-		else:
-			# ignore phase/unphase
-			for gt2 in re.split('\||/', gt):
-				gt2 = int(gt2)
-				if gt2 > 0:
-					alt_gt = str(alt[gt2-1])
-					n_samples += 1
-				elif gt2 == 0:
-					alt_gt = ref
-				else:
-					raise Exception("Invaild genotype, sample = {}, GT = {} !"
-						.format(sample.sample, gt))
-				site_patt += alt_gt
+		if ind_age == 0 or (ind_age == 1 and len(sample_name) <= ancient_s_n_len) or (ind_age == 2 and len(sample_name) > ancient_s_n_len):
+			n_sample += 1
+			if gt == ".":
+				site_patt += ref * 2
+			else:
+				# ignore phase/unphase
+				for gt2 in re.split('\||/', gt):
+					gt2 = int(gt2)
+					if gt2 > 0:
+						alt_gt = str(alt[gt2-1])
+						freq += 1
+					elif gt2 == 0:
+						alt_gt = ref
+					else:
+						raise Exception("Invaild genotype, sample = {}, GT = {} !"
+							.format(sample_name, gt))
+					site_patt += alt_gt
 
-			if len(alt_gt) > 1:
-				return "", 0
+				if len(alt_gt) > 1:
+					return "", 0
 			
 	if verbose:
 		print(record)
 
-	if len(site_patt) != len(record.samples)*2:
+	if len(site_patt) != n_sample*2:
 		print(site_patt)
 		raise Exception("One site pattern has incorrect number in {} "
 			"position {} of sample {}, where {} != {} !"
-			.format(record.CHROM, record.POS, sample.sample, len(site_patt), len(record.samples)*2))
+			.format(record.CHROM, record.POS, sample_name, len(site_patt), n_sample*2))
 	
-	if n_samples > len(record.samples)*2 and n_samples < 1:
-		raise Exception("Incorrect number of indels {} should <= total number "
+	if freq > n_sample*2 and freq < 1:
+		raise Exception("Incorrect number of SNPs {} should <= total number "
 			"of samples {}, {} position {} of sample {} !"
-			.format(n_samples, len(record.samples)*2), record.CHROM, record.POS, sample.sample)
+			.format(freq, n_sample*2, record.CHROM, record.POS, sample_name))
 	
-	return site_patt, n_samples
+	return site_patt, freq
 
-def get_indel_count(record, ref, alt, verbose=False):
-	n_samples = 0
-	
+def get_indel_count(record, ref, alt, ind_age, verbose=False):
+	freq = 0
+	n_sample = 0
 	for sample in record.samples:
 		#sample = record.samples[1]
 		gt = sample['GT'].strip()
+		sample_name = sample.sample
 
 		if verbose:
 			print(gt)
 
-		if gt != ".":
-			# ignore phase/unphase
-			for gt2 in re.split('\||/', gt):
-				gt2 = int(gt2)
-				if gt2 > 0:
-					n_samples += 1
+		if ind_age == 0 or (ind_age == 1 and len(sample_name) <= ancient_s_n_len) or (ind_age == 2 and len(sample_name) > ancient_s_n_len):
+			n_sample += 1
+			if gt != ".":
+				# ignore phase/unphase
+				for gt2 in re.split('\||/', gt):
+					gt2 = int(gt2)
+					if gt2 > 0:
+						freq += 1
 					
-	if n_samples > len(record.samples)*2 and n_samples < 1:
+	if freq > n_sample*2 and freq < 1:
 		raise Exception("Incorrect number of indels {} should <= total number "
 			"of samples {}, {} position {} of sample {} !"
-			.format(n_samples, len(record.samples)*2), record.CHROM, record.POS, sample.sample)
+			.format(freq, n_sample*2, record.CHROM, record.POS, sample_name))
 	
-	return n_samples
+	return freq
 
 
 # count all bases in reference sequences
@@ -134,14 +142,19 @@ def count_bases(seq):
 vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
+#ind_age = sys.argv[3]
+ind_age = 0 # 0 chooses all, 1 chooses just the modern individuals, 2 chooses just ancient 
+
 msg_freq = 100000
+# ancient sample names len() > 9
+ancient_s_n_len = 9
 
 vcf_reader = vcf.Reader(open(vcf_f_n, 'r'))
 print("Count patterns from", vcf_f_n)
 
 rows_not_count_file = open("RowsNotCount.txt", "w")
 
-samples=get_samples(vcf_reader)
+samples=get_samples(vcf_reader, ind_age)
 
 # bases are taken for non-constant sites including ins/del, nt in ref => counts
 ref_bases_taken = Counter()
@@ -164,7 +177,7 @@ for record in vcf_reader:
 	# all changes should be taken out from reference including ins/del
 	ref_bases_taken += count_bases(ref)
 	
-	site_patt, snp_freq = get_one_site_patttern(record, ref, alt)
+	site_patt, snp_freq = get_one_site_patttern(record, ref, alt, ind_age)
 	# only pick up mutation, ignore insertion/deletion
 	if len(site_patt) > 0:
 		ref = ref.upper()
@@ -172,7 +185,7 @@ for record in vcf_reader:
 		snp_frequencies[snp_freq] +=1
 	else:
 		n_c_row += 1
-		n_c_freq = get_indel_count(record, ref, alt)
+		n_c_freq = get_indel_count(record, ref, alt, ind_age)
 		indel_frequencies[n_c_freq] += 1
 		print(record, file=rows_not_count_file)
 		
