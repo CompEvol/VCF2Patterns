@@ -130,8 +130,8 @@ def count_bases(seq):
 ######### main
 
 #vcf_f_n = sys.argv[1]
-vcf_f_n="./adelie/1klines.vcf"
-#vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
+#vcf_f_n="./adelie/1klines.vcf"
+vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
 #ref_f_n = sys.argv[2]
 ref_f_n="./adelie/adelie.allscaffolds.fa"
 msg_freq = 100000
