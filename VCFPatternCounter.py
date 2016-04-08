@@ -7,6 +7,7 @@ import re
 from Bio import SeqIO
 from collections import Counter
 import json
+import argparse
 
 # return a tuple of sample names on 2 copies
 def get_samples(vcf_reader, ind_age):
@@ -135,131 +136,151 @@ def count_bases(seq):
 			.format(len(seq), nt_tot))
 	return bases
 
-######### main
 
-#vcf_f_n = sys.argv[1]
-#vcf_f_n="./adelie/1klines.vcf"
-vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
-#ref_f_n = sys.argv[2]
-ref_f_n="./adelie/adelie.allscaffolds.fa"
-#ind_age = sys.argv[3]
-ind_age = 0 # 0 chooses all, 1 chooses just the modern individuals, 2 chooses just ancient 
-
-msg_freq = 100000
 # ancient sample names len() > 9
 ancient_s_n_len = 9
 
-vcf_reader = vcf.Reader(open(vcf_f_n, 'r'))
-print("Count patterns from", vcf_f_n)
+def main(vcf_f_n, ref_f_n, ind_age = 0):
+	#vcf_f_n="./adelie/1klines.vcf"
+	#vcf_f_n="./adelie/allmodern.24.8x.2.allancient.22.q20.vcf"
+	#ref_f_n="./adelie/adelie.allscaffolds.fa"
+	#ind_age = 0 # 0 chooses all, 1 chooses just the modern individuals, 2 chooses just ancient 
 
-rows_not_count_file = open("RowsNotCount.txt", "w")
+	msg_freq = 100000
 
-samples=get_samples(vcf_reader, ind_age)
+	vcf_reader = vcf.Reader(open(vcf_f_n, 'r'))
+	print("Count patterns from", vcf_f_n)
 
-# bases are taken for non-constant sites including ins/del, nt in ref => counts
-ref_bases_taken = Counter()
-# SNP patterns, pattern => counts
-patterns = Counter()
-# number of samples mutated on the site, number of samples => counts
-snp_frequencies = Counter()
-indel_frequencies = Counter()
-row = 0
-n_c_row = 0
-for record in vcf_reader:
-	#record = next(vcf_reader)
-	#print (record)
+	rows_not_count_file = open("RowsNotCount.txt", "w")
 
-	ref = record.REF
-	alt = record.ALT
-	#chrom = record.CHROM
-	#pos = record.POS
+	samples=get_samples(vcf_reader, ind_age)
 
-	# all changes should be taken out from reference including ins/del
-	ref_bases_taken += count_bases(ref)
-	
-	site_patt, snp_freq = get_one_site_patttern(record, ref, alt, ind_age)
-	# only pick up mutation, ignore insertion/deletion
-	if len(site_patt) > 0:
-		ref = ref.upper()
-		patterns[site_patt] += 1
-		snp_frequencies[snp_freq] +=1
+	if ind_age == 1:
+		print("Chooses just the modern individuals:", samples)
+	elif ind_age == 2:
+		print("Chooses just the ancient individuals:", samples)
 	else:
-		n_c_row += 1
-		n_c_freq = get_indel_count(record, ref, alt, ind_age)
-		indel_frequencies[n_c_freq] += 1
-		print(record, file=rows_not_count_file)
+		print("Chooses all individuals:", samples)
+
+	# bases are taken for non-constant sites including ins/del, nt in ref => counts
+	ref_bases_taken = Counter()
+	# SNP patterns, pattern => counts
+	patterns = Counter()
+	# number of samples mutated on the site, number of samples => counts
+	snp_frequencies = Counter()
+	indel_frequencies = Counter()
+	row = 0
+	n_c_row = 0
+	for record in vcf_reader:
+		#record = next(vcf_reader)
+		#print (record)
+
+		ref = record.REF
+		alt = record.ALT
+		#chrom = record.CHROM
+		#pos = record.POS
+
+		# all changes should be taken out from reference including ins/del
+		ref_bases_taken += count_bases(ref)
+	
+		site_patt, snp_freq = get_one_site_patttern(record, ref, alt, ind_age)
+		# only pick up mutation, ignore insertion/deletion
+		if len(site_patt) > 0:
+			ref = ref.upper()
+			patterns[site_patt] += 1
+			snp_frequencies[snp_freq] +=1
+		else:
+			n_c_row += 1
+			n_c_freq = get_indel_count(record, ref, alt, ind_age)
+			indel_frequencies[n_c_freq] += 1
+			print(record, file=rows_not_count_file)
 		
-	row += 1
+		row += 1
 
-	if row % msg_freq == 0:
-		print("Find {} patterns from {} rows.".format(len(patterns), row))
+		if row % msg_freq == 0:
+			print("Find {} patterns from {} rows.".format(len(patterns), row))
 
-rows_not_count_file.close()
-print("Find {} patterns from total {} rows, where {} rows are ignored.".format(len(patterns), row, n_c_row))
+	rows_not_count_file.close()
+	print("Find {} patterns from total {} rows, where {} rows are ignored.".format(len(patterns), row, n_c_row))
 
-#with open('patterns.json', 'w') as fp:
-#    json.dump(patterns, fp)
-with open('ref_bases_taken.json', 'w') as fp:
-    json.dump(ref_bases_taken, fp)
+	#with open('patterns.json', 'w') as fp:
+	#    json.dump(patterns, fp)
+	with open('ref_bases_taken.json', 'w') as fp:
+		json.dump(ref_bases_taken, fp)
 
-with open('indel_frequencies.txt', 'w') as fp:
-	for k, v in indel_frequencies.items():
-		print('{}\t{}'.format(k, v), file=fp)
+	with open('indel_frequencies.txt', 'w') as fp:
+		for k, v in indel_frequencies.items():
+			print('{}\t{}'.format(k, v), file=fp)
 
-indel_freq_sum = sum(indel_frequencies.values())
-if n_c_row != indel_freq_sum:
-	raise Exception("Incorrect indel frequencies {}, it should = {} !".format(indel_freq_sum, n_c_row))
+	indel_freq_sum = sum(indel_frequencies.values())
+	if n_c_row != indel_freq_sum:
+		raise Exception("Incorrect indel frequencies {}, it should = {} !".format(indel_freq_sum, n_c_row))
 
-with open('snp_frequencies.txt', 'w') as fp:
-	for k, v in snp_frequencies.items():
-		print('{}\t{}'.format(k, v), file=fp)
+	with open('snp_frequencies.txt', 'w') as fp:
+		for k, v in snp_frequencies.items():
+			print('{}\t{}'.format(k, v), file=fp)
 
-snp_freq_sum = sum(snp_frequencies.values())
-if (row - n_c_row) != snp_freq_sum:
-	raise Exception("Incorrect SNP frequencies {}, it should = {} !".format(snp_freq_sum, (row - n_c_row)))
+	snp_freq_sum = sum(snp_frequencies.values())
+	if (row - n_c_row) != snp_freq_sum:
+		raise Exception("Incorrect SNP frequencies {}, it should = {} !".format(snp_freq_sum, (row - n_c_row)))
 
-# print patterns
-patterns_file = open("Patterns.txt", "w")
+	# print patterns
+	patterns_file = open("Patterns.txt", "w")
 
-print('\t'.join(samples), file=patterns_file)
-for k, v in patterns.items():
-	print('{}\t{}'.format(k, v), file=patterns_file)
+	print('\t'.join(samples), file=patterns_file)
+	for k, v in patterns.items():
+		print('{}\t{}'.format(k, v), file=patterns_file)
 
-# count all constant sites and add to patterns
-reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
-print("Loading reference sequences from", ref_f_n)
+	# count all constant sites and add to patterns
+	reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
+	print("Loading reference sequences from", ref_f_n)
 
-ref_bases = count_ref_bases(reference_sequences)
-with open('ref_bases.json', 'w') as fp:
-    json.dump(ref_bases, fp)
+	ref_bases = count_ref_bases(reference_sequences)
+	with open('ref_bases.json', 'w') as fp:
+		json.dump(ref_bases, fp)
 
-ref_bases_sum = sum(ref_bases.values())
-ref_bases_taken_sum = sum(ref_bases_taken.values())
-if ref_bases_sum < ref_bases_taken_sum:
-	raise Exception("Total nucleotides in VCF ref {} should >= totals in reference sequences {} !\n"
-		"Please check ref_bases.json and ref_bases_taken.json".format(ref_bases_taken_sum, ref_bases_sum))
+	ref_bases_sum = sum(ref_bases.values())
+	ref_bases_taken_sum = sum(ref_bases_taken.values())
+	if ref_bases_sum < ref_bases_taken_sum:
+		raise Exception("Total nucleotides in VCF ref {} should >= totals in reference sequences {} !\n"
+			"Please check ref_bases.json and ref_bases_taken.json".format(ref_bases_taken_sum, ref_bases_sum))
 
-# count total constant site bases
-constant_site_bases = ref_bases_sum - ref_bases_taken_sum
-print("Total constant site bases =", constant_site_bases) 
+	# count total constant site bases
+	constant_site_bases = ref_bases_sum - ref_bases_taken_sum
+	print("Total constant site bases =", constant_site_bases) 
 
-# add constant site to patterns
-diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
-if len(diff) > 0:
-	print("Warning: find different nucleotide bases between reference and VCF ref, "
-			"diff = {} !".format(diff))
+	# add constant site to patterns
+	diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
+	if len(diff) > 0:
+		print("Warning: find different nucleotide bases between reference and VCF ref, "
+				"diff = {} !".format(diff))
 
-for k in ref_bases.keys():
-	constant_site = k * len(samples)
-	if k not in ref_bases_taken:
-		print("Warning: cannot find nucleotide base {} in dict ref_bases_taken, skip it !".format(k))
-		continue
-	count = ref_bases[k] - ref_bases_taken[k]
-	if count < 1:
-		print("Warning: constant site having all {}s does not have a positive count, "
-				"count = {} !".format(k, count))
-		continue
-	print('{}\t{}'.format(constant_site, count), file=patterns_file)
+	for k in ref_bases.keys():
+		constant_site = k * len(samples)
+		if k not in ref_bases_taken:
+			print("Warning: cannot find nucleotide base {} in dict ref_bases_taken, skip it !".format(k))
+			continue
+		count = ref_bases[k] - ref_bases_taken[k]
+		if count < 1:
+			print("Warning: constant site having all {}s does not have a positive count, "
+					"count = {} !".format(k, count))
+			continue
+		print('{}\t{}'.format(constant_site, count), file=patterns_file)
 
-patterns_file.close()
+	patterns_file.close()
 
+
+######### main
+if __name__ == "__main__":
+	parser = argparse.ArgumentParser()
+
+	parser.add_argument("vcf_f_n", 
+		help="VCF file path, such as './adelie/allmodern.24.8x.2.allancient.22.q20.vcf'")
+	parser.add_argument("ref_f_n", 
+		help="Reference sequence file path, such as './adelie/adelie.allscaffolds.fa'")
+	parser.add_argument("-a", "--age",dest ="ind_age", type = int, default = 0, 
+		help="Individuals selected by age. 0 chooses all, 1 chooses just the modern individuals, 2 chooses just ancient")
+	args = parser.parse_args()
+
+	main(args.vcf_f_n, args.ref_f_n, args.ind_age)
+    
