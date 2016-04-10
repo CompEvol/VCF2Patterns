@@ -203,8 +203,8 @@ def main(vcf_f_n, ref_f_n, ind_age = 0):
 	rows_not_count_file.close()
 	print("Find {} patterns from total {} rows, where {} rows are ignored.".format(len(patterns), row, n_c_row))
 
-	#with open('patterns.json', 'w') as fp:
-	#    json.dump(patterns, fp)
+	with open('patterns.json', 'w') as fp:
+	    json.dump(patterns, fp)
 	with open('ref_bases_taken.json', 'w') as fp:
 		json.dump(ref_bases_taken, fp)
 
@@ -223,13 +223,6 @@ def main(vcf_f_n, ref_f_n, ind_age = 0):
 	snp_freq_sum = sum(snp_frequencies.values())
 	if (row - n_c_row) != snp_freq_sum:
 		raise Exception("Incorrect SNP frequencies {}, it should = {} !".format(snp_freq_sum, (row - n_c_row)))
-
-	# print patterns
-	patterns_file = open("Patterns.txt", "w")
-
-	print('\t'.join(samples), file=patterns_file)
-	for k, v in patterns.items():
-		print('{}\t{}'.format(k, v), file=patterns_file)
 
 	# count all constant sites and add to patterns
 	reference_sequences = SeqIO.parse(open(ref_f_n),'fasta')
@@ -265,7 +258,15 @@ def main(vcf_f_n, ref_f_n, ind_age = 0):
 			print("Warning: constant site having all {}s does not have a positive count, "
 					"count = {} !".format(k, count))
 			continue
-		print('{}\t{}'.format(constant_site, count), file=patterns_file)
+		patterns[constant_site] += count
+#		print('{}\t{}'.format(constant_site, count), file=patterns_file)
+
+	# print patterns
+	patterns_file = open("Patterns.txt", "w")
+
+	print('\t'.join(samples), file=patterns_file)
+	for k, v in patterns.items():
+		print('{}\t{}'.format(k, v), file=patterns_file)
 
 	patterns_file.close()
 
