@@ -258,6 +258,7 @@ def main(vcf_f_n, ref_f_n, ind_age = 0):
 			print("Warning: constant site having all {}s does not have a positive count, "
 					"count = {} !".format(k, count))
 			continue
+		# consider constant patterns (all individuals are same but different to reference) as constant sites 
 		patterns[constant_site] += count
 #		print('{}\t{}'.format(constant_site, count), file=patterns_file)
 
