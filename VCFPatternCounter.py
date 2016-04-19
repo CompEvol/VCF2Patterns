@@ -239,8 +239,8 @@ def main(vcf_f_n, ref_f_n, ind_age = 0):
 			"Please check ref_bases.json and ref_bases_taken.json".format(ref_bases_taken_sum, ref_bases_sum))
 
 	# count total constant site bases
-	constant_site_bases = ref_bases_sum - ref_bases_taken_sum
-	print("Total constant site bases =", constant_site_bases) 
+	same_to_reference_bases = ref_bases_sum - ref_bases_taken_sum
+	print("The number of sites are same to reference = {}, which is smaller than number of constant sites.".format(same_to_reference_bases)) 
 
 	# add constant site to patterns
 	diff = set(ref_bases.keys()) - set(ref_bases_taken.keys())
